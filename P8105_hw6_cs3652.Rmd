@@ -58,10 +58,23 @@ broom::tidy(baltimore_model) %>%
 In Baltimore, among non-white victims, the odds of having a solved homicide is 0.441 times the odds of having a solved homicide among white victims, adjusting for sex and age. We are 95% confident that the true odds ratio lies between 0.313 and 0.620.
 
 ```{r}
-
+city_model = homicides %>% 
+  group_by(city_state) %>% 
+  nest() %>% 
+    mutate(logit_solved = map(data, ~glm(solved ~ victim_sex + victim_race + victim_age, 
+                                      family = binomial, data = .x)), 
+         logit_solved = map(logit_solved, broom::tidy)) %>% 
+  select(-data) %>% 
+  unnest() %>% 
+  mutate(odds_ratio = exp(estimate), 
+         lower_bound = exp(estimate - 1.96*std.error), 
+         upper_bound = exp(estimate + 1.96*std.error)) %>% 
+  filter(term == "victim_racenon-White") %>% 
+  select(odds_ratio, lower_bound, upper_bound) %>% 
+  knitr::kable(digits = 3)
 ```
 
-Now run glm for each of the cities in your dataset, and extract the adjusted odds ratio (and CI) for solving homicides comparing non-white victims to white victims. Do this within a “tidy” pipeline, making use of purrr::map, list columns, and unnest as necessary to create a dataframe with estimated ORs and CIs for each city.
+extract the adjusted odds ratio (and CI) for solving homicides comparing non-white victims to white victims. Do this within a “tidy” pipeline, making use of purrr::map, list columns, and unnest as necessary to create a dataframe with estimated ORs and CIs for each city.
 
 Create a plot that shows the estimated ORs and CIs for each city. Organize cities according to estimated OR, and comment on the plot.
 
